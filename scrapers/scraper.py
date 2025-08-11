@@ -3,28 +3,49 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-import wget
 import os
 import pandas as pd
-import numpy as np
-
 
 # Set the url
 url = "https://obr.uk/efo"
 
-# The url rejects GET requests that do not specify a user agent. As a result, it returns 403 forbidden. 
-# Fetching user agent from developer tools from browser. F12 -> network -> click on first one listed -> look for user agent under headers. 
-headers = {"User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0"}
 
-# GET request with headers
-response = requests.get(url, headers = headers)
+# Create function to send GET requests to URLs and create soup
+def get_url_soup(url: str) -> BeautifulSoup:
+    """
+    This function sends GET requests to given URLs for web scraping purposes. 
 
-# BeautifulSoup the response 
-soup = BeautifulSoup(response.text, "html.parser")
+    Args:
+        url (string): URL in string format to pass through the function
+
+    Returns:
+        BeautifulSoup object: parsed URL from bs4 
+    """
+
+    # The url rejects GET requests that do not specify a user agent. As a result, it returns 403 forbidden. 
+    # # Fetching user agent from developer tools from browser. F12 -> network -> click on first one listed -> look for user agent under headers. 
+    headers = {"User-Agent" : "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:141.0) Gecko/20100101 Firefox/141.0"}
+
+    # Set up the session
+    session = requests.Session()
+
+    try:
+        response = session.get(url, headers = headers) # Get response
+        response.raise_for_status()
+
+    except requests.exceptions.RequestException as e:
+        print(f"Request error for {url}: {e}")
+
+    return BeautifulSoup(response.text, "html.parser")
+
+
+soup = get_url_soup(url)
 
 # After some inspection, I am interested in the detailed forecasts for the economy
 # Only need to extract the urls associated with a download link. 
 links_to_docs = soup.find_all("a", class_ = "download-link")
+
+print(soup.find_all("option"))
 
 # Create a set to store unique urls
 link_of_interest = set()
@@ -35,6 +56,14 @@ for link in links_to_docs:
     if "economic-and-fiscal-outlook-detailed-forecast-tables-economy" in link.get("href"):
         # Save those to the set created earlier
         link_of_interest.add(link.get("href"))
+
+
+
+
+
+
+
+
 
 
 # Path to save the data to
