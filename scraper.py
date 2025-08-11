@@ -40,7 +40,20 @@ for link in links_to_docs:
 # Path to save the data to
 path = os.getcwd() + "\\data"
 
-# Try to download / read the file - currently not working. Also tried wget but that didn't work either
+# Download file
 for link in link_of_interest:
-    pd.read_excel(link)
+    file_response = requests.get(link, headers = headers)
+    print("Status code:", file_response.status_code)
+    print("Final URL:", file_response.url)
+    print("Content-Type:", file_response.headers.get("Content-Type"))
+    print("Content length:", len(file_response.content))
+
+        # Save if it's a file
+    if "application" in file_response.headers.get("Content-Type", ""):
+        with open("downloaded_file.xlsx", "wb") as f:
+            f.write(file_response.content)
+            print("File saved.")
+    else:
+        # Maybe it's still an HTML page
+        print("Looks like this is still a webpage, not a file.")
 
