@@ -133,6 +133,7 @@ def download_data(download_url:list, headers:dict, local_path:str):
 
     for url in download_url:
         
+        # Extracting the string between "download" and "/?t" - will set as filename
         pattern = r"(?<=download/)(.*?)(?=/\?t)"
         match = re.search(pattern, url)
         match_pattern = match.group(1) if match else ""
