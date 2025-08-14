@@ -54,6 +54,8 @@ def get_url_soup(url: str, headers:dict) -> BeautifulSoup:
 
     return BeautifulSoup(response.text, "html.parser")
 
+# soup = get_url_soup(obr_efo_url, headers = headers)
+
 # Function to extract webpage URL where the download links are
 def extract_urls(url:str, soup: BeautifulSoup) -> list:
     """
@@ -81,6 +83,8 @@ def extract_urls(url:str, soup: BeautifulSoup) -> list:
 
     # Now removing None and keeping only the URLs I am interested in. 
     return [URL for URL in list(URLs) if URL is not None and "economic-and-fiscal-outlook" in URL]
+
+# urls = extract_urls(url = obr_efo_url, soup = soup)
 
 # Function to extract download links from each webpage
 def extract_download_urls(page_urls:list, keywords: list) -> list:
@@ -114,6 +118,8 @@ def extract_download_urls(page_urls:list, keywords: list) -> list:
 
     return list(download_urls)
 
+# download_url = extract_download_urls(page_urls = urls, keywords = economy_href)
+
 # Download data from download links
 def download_data(download_url:list, headers:dict, local_path:str):
     """
@@ -132,17 +138,17 @@ def download_data(download_url:list, headers:dict, local_path:str):
     session = requests.Session()
 
     for url in download_url:
-        
-        # Extracting the string between "download" and "/?t" - will set as filename
-        pattern = r"(?<=download/)(.*?)(?=/\?t)"
-        match = re.search(pattern, url)
-        match_pattern = match.group(1) if match else ""
-        filename = match_pattern + ".xlsx" 
-
-        print("Downloading:", filename)
 
         # Get request
         response = session.get(url, headers = headers)
+        
+        response_url = response.url
+
+        # Extracting the string between "download" and "/?t" - will set as filename
+        match = re.search(r"[^/]+$", response_url)
+        filename = match.group(0) if match else ""
+
+        print("Downloading:", filename)
 
         if "application" in response.headers.get("Content-Type", ""):
              with open(local_path + filename, "wb") as f:
@@ -174,3 +180,5 @@ scrape_and_download_data(url=obr_efo_url,
                          headers=headers, 
                          keywords=economy_href, 
                          local_path=raw_data_folder_path)
+
+
