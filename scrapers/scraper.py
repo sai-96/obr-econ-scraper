@@ -6,6 +6,7 @@ import json
 import os
 import pandas as pd
 import re
+import io
 
 ############## PARAMS ####################
 
@@ -176,9 +177,90 @@ def scrape_and_download_data(url:str, headers:dict, keywords:list, local_path:st
 # New data only comes out every 6-7 months or so. 
 
 # Scrape and download 
+# scrape_and_download_data(url=obr_efo_url, 
+#                          headers=headers, 
+#                          keywords=economy_href, 
+#                          local_path=raw_data_folder_path)
+
+
+# Same function as download data, but instead of downloading, now it reads the data directly in pandas
+
+
+def read_data(download_url:list, headers:dict, sheet_name:str=None, skip_rows:int=0):
+    """
+    Read data directly from download links into pandas DataFrames
+    without saving locally.
+
+    Args:
+        download_url (list): list of the download links.
+        headers (dict): dictionary of headers.
+        sheet_name (str): Name of Excel sheet to read (default: first sheet).
+        skip_rows (int): Number of rows to skip before reading header.
+
+    Returns:
+        dict: {filename: dataframe}
+    """
+
+    session = requests.Session()
+    dataframes = {}
+
+    for url in download_url:
+        response = session.get(url, headers=headers)
+        response.raise_for_status()
+
+        # Extract filename from URL
+        match = re.search(r"[^/]+$", response.url)
+        filename = match.group(0) if match else "unknown_file"
+
+        print("Reading:", filename)
+
+        content_type = response.headers.get("Content-Type", "")
+
+        # Handle common file types
+        if "csv" in filename or "text/csv" in content_type:
+            df = pd.read_csv(io.StringIO(response.text), skiprows=skip_rows)
+        elif "xls" in filename or "excel" in content_type:
+            df = pd.read_excel(io.BytesIO(response.content), sheet_name=sheet_name, skiprows=skip_rows)
+        elif "json" in filename or "application/json" in content_type:
+            df = pd.read_json(io.StringIO(response.text))
+        else:
+            print("Unsupported file type for:", filename)
+            continue
+
+        dataframes[filename] = df
+
+    return dataframes
+
+
+
+
+
+import dlt
+
+# Need to decorate this with dlt
+#@dlt.resource
+def scrape_and_download_data(url:str, headers:dict, keywords:list):
+
+    soup = get_url_soup(url, headers=headers)
+    page_url_list = extract_urls(url=url, soup=soup)
+    download_url = extract_download_urls(page_urls=page_url_list, keywords=keywords)
+    return read_data(download_url=download_url, headers=headers)
+
+
 scrape_and_download_data(url=obr_efo_url, 
-                         headers=headers, 
-                         keywords=economy_href, 
-                         local_path=raw_data_folder_path)
+                          headers=headers, 
+                          keywords=economy_href)
+
+# Now this is a dlt resource - a source for the pipeline
+
+pipeline = dlt.pipeline(
+    pipeline_name = obr_econ_data,
+    pipelines_dir = ".data/",
+    destination = "filesystem"
+)
 
 
+
+# read a single table and get it up in Pandas. 
+# That table can be used in a dlt pipeline and can be used as a resource
+# From there, you can do the usual dlt pipeline and run
